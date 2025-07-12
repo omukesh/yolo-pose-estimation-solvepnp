@@ -181,6 +181,41 @@ The system provides:
 - Sensitive to camera calibration accuracy
 - Assumes rigid objects (no deformation)
 
+### Rotation Estimation Limitations
+
+The current implementation has specific limitations in rotation estimation due to the 2D-3D correspondence approach:
+
+#### Technical Background
+
+The system uses 2D segmentation masks overlaid with 3D object models, which creates inherent limitations in rotation estimation:
+
+1. **2D Mask Constraints**: The YOLOv8 segmentation provides 2D masks that primarily capture the object's silhouette in the image plane. This 2D representation loses depth information and makes it difficult to estimate out-of-plane rotations.
+
+2. **solvePnP Point Correspondence**: The algorithm maps 2D mask corners to 3D model corners. When the object is rotated out of the image plane (roll/pitch), the 2D projection of the mask becomes distorted, making accurate 3D-2D point matching challenging.
+
+3. **Rotation Vector Ambiguity**: The solvePnP algorithm may converge to local minima when dealing with ambiguous 2D-3D correspondences, particularly for rotations that don't significantly change the 2D silhouette.
+
+#### Specific Limitations
+
+- **Roll Estimation**: Limited accuracy when the object is rotated around the camera's optical axis
+- **Pitch Estimation**: Challenging when the object is tilted forward/backward relative to the camera
+- **Yaw Estimation**: Generally more reliable as it primarily affects the object's 2D silhouette
+
+#### Why This Occurs
+
+The fundamental issue stems from the **projection ambiguity**: multiple 3D orientations can produce similar 2D projections when viewed from a single camera perspective. This is particularly problematic for:
+- Objects with symmetric or near-symmetric shapes
+- Rotations that don't significantly alter the 2D contour
+- Cases where the 3D model's bounding box corners don't provide sufficient geometric constraints
+
+#### Mitigation Strategies
+
+To improve rotation estimation, consider:
+- Using multiple camera viewpoints
+- Incorporating depth information from RealSense cameras
+- Adding texture-based features for better correspondence
+- Implementing iterative refinement with multiple initial guesses
+
 ## Troubleshooting
 
 - **No detections**: Check YOLO model path and confidence threshold
